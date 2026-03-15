@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<!-- 
+    это HTML файл - это структура нашего веб-приложения
+    что делает этот файл:
+    1. создает форму для ввода текста
+    2. показывает отцензурированный текст
+    3. позволяет добавлять новые слова
+    4. подключает CSS для красивого оформления
+    5. содержит JavaScript код для взаимодействия с сервером
+-->
+
+<html lang="ru">
+<head>
+    <!-- head - это "голова" страницы, здесь настройки, которые не видны пользователю -->
+    
+    <!-- кодировка UTF-8 нужна, чтобы русские буквы отображались правильно -->
+    <meta charset="UTF-8">
+    
+    <!-- это нужно для правильного отображения на мобильных устройствах -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- заголовок страницы (виден в браузере) -->
+    <title>Цензуратор текста</title>
+    
+    <!-- подключаем файл со стилями (CSS) -->
+    <!-- url_for - это функция Flask, которая находит файл style.css в папке static -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='censor_style.css') }}">
+</head>
+<body>
+    <!-- body - это "тело" страницы, здесь всё, что видит пользователь -->
+    
+    <div class="container">
+        <!-- заголовок сайта -->
+        <h1>🔒 Цензуратор текста</h1>
+        <p class="subtitle">Введите текст, а мы заменим нецензурные слова на *** и добавим пояснения к сленгу. 
+            Если пояснение к сленговому слову или выражению не отображается в отредактированном варианте текста, вы можете поискать его в словаре или добавить, если его ещё там нет. Мы будем рады, если вы поможете нам усовершенствовать наш сайт! С уважением, разработчики проекта🌟</p>
+        
+        <!-- основная секция для работы с текстом -->
+        <div class="main-section">
+            <!-- левая часть: ввод текста -->
+            <div class="input-section">
+                <h2>📝 Введите ваш текст</h2>
+                <!-- textarea - это большое поле для ввода многострочного текста -->
+                <textarea id="inputText" placeholder="Например: Это просто кринж, емае! Что за рофл?"></textarea>
+                <!-- кнопка для цензурирования -->
+                <button onclick="filterText()" class="main-button">Отцензурировать текст (Ctrl+Enter) </button>
+            </div>
+            
+            <!-- правая часть: результат -->
+            <div class="output-section">
+                <h2>✨ Результат</h2>
+                <!-- div - это контейнер, куда мы выведем отцензурированный текст -->
+                <div id="outputText" class="output-box">
+                    Здесь появится отцензурированный текст...
+                </div>
+            </div>
+        </div>
+        
+        <!-- секция для добавления новых слов -->
+        <div class="add-words-section">
+            <h2>➕ Добавить новые слова</h2>
+            
+            <!-- форма для добавления матного слова -->
+            <div class="add-form">
+                <h3>Добавить нецезурное слово/выражение</h3>
+                <p class="form-description">Слово(или его часть) будет заменяться на ***</p>
+                <!-- input - это поле для ввода одной строки -->
+                <input type="text" id="badWordInput" placeholder="Введите нецензурное слово/выражение">
+                <button onclick="addBadWord()" class="add-button">Добавить</button>
+                <!-- сюда выведем сообщение об успехе или ошибке -->
+                <div id="badWordMessage" class="message"></div>
+            </div>
+            
+            <!-- форма для добавления сленгового слова -->
+            <div class="add-form">
+                <h3>Добавить сленговое слово</h3>
+                <p class="form-description">Слово будет автоматически получать пояснение в скобках</p>
+                <input type="text" id="slangWordInput" placeholder="Введите сленговое слово (например: вайб)">
+                <input type="text" id="slangExplanationInput" placeholder="Введите пояснение (например: атмосфера, настроение)">
+                <button onclick="addSlangWord()" class="add-button">Добавить</button>
+                <!-- сюда выведем сообщение об успехе или ошибке -->
+                <div id="slangWordMessage" class="message"></div>
+            </div>
+        </div>
+        
+        <!-- секция для просмотра сленговых слов -->
+        <div class="words-list-section">
+            <h2>📚 Словарь сленговых слов</h2>
+            <button onclick="loadSlangWords()" class="refresh-button">Обновить список</button>
+            <!-- сюда выведем список сленговых слов -->
+            <div id="slangWordsList" class="words-list"></div>
+        </div>
+    </div>
+    
+    <!-- JavaScript код сделает веб-приложение интерактивным -->
+    <script>
+        // функция для цензурирования текста //
+        function filterText() {
+            // получаем текст из поля ввода по его id
+            const text = document.getElementById('inputText').value;
+            
+            // проверяем, что текст введён
+            if (!text.trim()) {
+                alert('Пожалуйста, введите текст для цензурирования');
+                return;
+            }
+            
+            // отправляем запрос на сервер
+            fetch('/filter', {
+                method: 'POST',  // метод POST отправляет данные
+                headers: {
+                    'Content-Type': 'application/json',  // отправляем JSON
+                },
+                body: JSON.stringify({text: text})  // преобразуем текст в JSON
+            })
+            .then(response => response.json())  // преобразуем ответ сервера в JSON
+            .then(data => {
+                // data.filtered_text - это отцензурированный текст от сервера
+                // выводим его в блок с результатом
+                document.getElementById('outputText').textContent = data.filtered_text;
+            })
+            .catch(error => {
+                // если произошла ошибка
+                console.error('Ошибка:', error);
+                alert('Произошла ошибка при цензурировании текста. Попробуйте еще раз.');
+            });
+        }
+        
+        // функция для добавления нового матного слова //
+        function addBadWord() {
+            // получаем слово из поля ввода
+            const word = document.getElementById('badWordInput').value.trim();
+            // находим блок для сообщений
+            const messageDiv = document.getElementById('badWordMessage');
+            
+            // проверяем, что слово введено
+            if (!word) {
+                messageDiv.textContent = 'Пожалуйста, введите слово';
+                messageDiv.className = 'message error';  // Класс error делает текст красным
+                return;
+            }
+            
+            // отправляем запрос на сервер
+            fetch('/add_bad_word', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({word: word})
+            })
+            .then(response => response.json())
+            .then(data => {
+                // показываем сообщение от сервера
+                messageDiv.textContent = data.message;
+                // если успешно - зеленый цвет, если ошибка - красный
+                messageDiv.className = data.success ? 'message success' : 'message error';
+                
+                // если слово добавлено успешно, очищаем поле ввода
+                if (data.success) {
+                    document.getElementById('badWordInput').value = '';
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                messageDiv.textContent = 'Произошла ошибка при добавлении слова';
+                messageDiv.className = 'message error';
+            });
+        }
+        
+        // функция для добавления нового сленгового слова с пояснением //
+        function addSlangWord() {
+            // получаем слово и пояснение из полей ввода
+            const word = document.getElementById('slangWordInput').value.trim();
+            const explanation = document.getElementById('slangExplanationInput').value.trim();
+            const messageDiv = document.getElementById('slangWordMessage');
+            
+            // проверяем, что оба поля заполнены
+            if (!word || !explanation) {
+                messageDiv.textContent = 'Пожалуйста, заполните оба поля';
+                messageDiv.className = 'message error';
+                return;
+            }
+            
+            // отправляем запрос на сервер
+            fetch('/add_slang_word', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({word: word, explanation: explanation})
+            })
+            .then(response => response.json())
+            .then(data => {
+                // показываем сообщение от сервера
+                messageDiv.textContent = data.message;
+                messageDiv.className = data.success ? 'message success' : 'message error';
+                
+                // если слово добавлено успешно, очищаем поля ввода
+                if (data.success) {
+                    document.getElementById('slangWordInput').value = '';
+                    document.getElementById('slangExplanationInput').value = '';
+                    // обновляем список сленговых слов
+                    loadSlangWords();
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                messageDiv.textContent = 'Произошла ошибка при добавлении слова';
+                messageDiv.className = 'message error';
+            });
+        }
+        
+        // функция для загрузки и отображения списка сленговых слов //
+        function loadSlangWords() {
+            const wordsListDiv = document.getElementById('slangWordsList');
+            wordsListDiv.innerHTML = '<p>Загрузка списка сленговых слов...</p>';
+            
+            // отправляем запрос на сервер для получения сленговых слов
+            fetch('/get_slang_words', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // если слов нет, показываем сообщение
+                if (data.slang_words.length === 0) {
+                    wordsListDiv.innerHTML = '<p class="info-message">Сленговых слов пока нет. Добавьте первое слово!</p>';
+                    return;
+                }
+                
+                // создаем HTML для списка слов
+                let html = '<ul>';
+                data.slang_words.forEach(item => {
+                    html += `<li><strong>${item.word}</strong> - ${item.explanation}</li>`;
+                });
+                html += '</ul>';
+                
+                wordsListDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                wordsListDiv.innerHTML = '<p class="message error">Произошла ошибка при загрузке слов</p>';
+            });
+        }
+        
+        // когда страница загружается, автоматически загружаем список сленговых слов
+        window.onload = function() {
+            loadSlangWords();
+        };
+        
+        // добавляем возможность нажать Ctrl+Enter для быстрого цензурирования
+        document.getElementById('inputText').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                filterText();
+            }
+        });
+    </script>
+</body>
+</html>

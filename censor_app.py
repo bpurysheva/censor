@@ -233,9 +233,9 @@ def add_slang_word(word, explanation):
 @app.route('/')
 def index():
     # главная страница сайта, показывает пользователю HTML страницу с формой для ввода текста
-    # когда пользователь заходит на главную страницу(localhost), Flask вызывает эту функцию и показывает файл templates/censor_index.html
+    # когда пользователь заходит на главную страницу(localhost), Flask вызывает эту функцию и показывает файл templates/index.html
 
-    return render_template('censor_index.html')
+    return render_template('index.html')
 
 
 @app.route('/filter', methods=['POST'])
